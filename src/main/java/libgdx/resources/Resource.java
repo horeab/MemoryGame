@@ -20,7 +20,6 @@ public enum Resource implements Res {
     btn_campaign_disabled("game/campaign/buttons/btn_campaign_disabled.png", Texture.class),
     btn_current_level_down("game/campaign/buttons/btn_current_level_down.png", Texture.class),
     btn_current_level_up("game/campaign/buttons/btn_current_level_up.png", Texture.class),
-    question_background("game/question_background.png", Texture.class),
 
     labels_cs("labels/labels_cs", I18NBundle.class),
     labels_da("labels/labels_da", I18NBundle.class),
@@ -50,9 +49,7 @@ public enum Resource implements Res {
     labels_tr("labels/labels_tr", I18NBundle.class),
     labels_uk("labels/labels_uk", I18NBundle.class),
     labels_vi("labels/labels_vi", I18NBundle.class),
-    labels_zh("labels/labels_zh", I18NBundle.class),
-    sound_fail_game_over("sounds/sound_fail_game_over.mp3", Sound.class),
-    sound_success_game_over("sounds/sound_success_game_over.mp3", Sound.class),;
+    labels_zh("labels/labels_zh", I18NBundle.class),;
     // @formatter:on
 
     private String path;
