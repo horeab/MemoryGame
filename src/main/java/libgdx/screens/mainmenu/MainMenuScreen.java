@@ -1,85 +1,130 @@
 package libgdx.screens.mainmenu;
 
-import com.badlogic.gdx.Application;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
-import com.badlogic.gdx.scenes.scene2d.ui.Stack;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
-import com.badlogic.gdx.utils.Align;
+import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 
-import libgdx.controls.animations.ActorAnimation;
-import libgdx.controls.button.MyButton;
-import libgdx.controls.button.builders.BackButtonBuilder;
-import libgdx.controls.label.MyWrappedLabel;
-import libgdx.controls.label.MyWrappedLabelConfigBuilder;
-import libgdx.game.Game;
+import java.util.ArrayList;
+import java.util.List;
+
 import libgdx.game.ScreenManager;
+import libgdx.game.game.model.CurrentGame;
+import libgdx.game.game.model.MatrixChoice;
+import libgdx.game.game.model.MatrixElement;
+import libgdx.game.game.model.TableCell;
+import libgdx.game.game.util.GameLevel;
+import libgdx.game.game.util.GameLogic;
 import libgdx.graphics.GraphicUtils;
 import libgdx.implementations.skelgame.SkelGameRatingService;
-import libgdx.resources.FontManager;
 import libgdx.resources.Resource;
-import libgdx.resources.dimen.MainDimen;
 import libgdx.screen.AbstractScreen;
-import libgdx.utils.ScreenDimensionsManager;
 
 public class MainMenuScreen extends AbstractScreen<ScreenManager> {
+
+    private MatrixElement[][] levelMatrix;
+    private CurrentGame currentGame;
+    private boolean enableImageClick = false;
+    private List<TableCell> cells = new ArrayList<>();
+
+    public MainMenuScreen(CurrentGame currentGame) {
+        this.currentGame = currentGame;
+    }
+
+    @Override
+    protected void initFields() {
+        levelMatrix = new GameLogic().generateMatrix(GameLevel._0);
+    }
 
     @Override
     public void buildStage() {
         new SkelGameRatingService(this).appLaunched();
-        addButtons();
+        addAllTable();
     }
 
-    private void addButtons() {
+    private void addAllTable() {
         Table table = new Table();
-        float verticalGeneralMarginDimen = MainDimen.vertical_general_margin.getDimen();
-        if (Gdx.app.getType() == Application.ApplicationType.iOS) {
-            MyButton backBtn = new BackButtonBuilder().createScreenBackButton(this);
-            table.add(backBtn).padLeft(-MainDimen.horizontal_general_margin.getDimen() * 40).padTop(-verticalGeneralMarginDimen * 3).width(backBtn.getWidth()).height(backBtn.getHeight()).row();
+
+        final int rows = currentGame.getCurrentLevel().getRows();
+        final int columns = currentGame.getCurrentLevel().getCols();
+
+
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < columns; col++) {
+                final MatrixElement currentItem = levelMatrix[row][col];
+                final MatrixChoice clickedItem = new MatrixChoice(col, row, currentItem.getItem());
+                Table cell = new Table();
+                Image image = getMatrixElementImage(currentItem);
+                cell.add(image);
+                cells.add(new TableCell(cell, currentItem));
+                image.addListener(new ClickListener() {
+                    @Override
+                    public void clicked(InputEvent event, float x, float y) {
+                        if (enableImageClick && !clickedItem.equals(currentGame.getFirstChoice()) && !currentItem.isFound()
+                                && !currentItem.isShowed()) {
+                            currentItem.setShowed(true);
+                            refreshImageViews();
+
+                            if (currentGame.getFirstChoice() != null) {
+                                processScore(currentGame, clickedItem);
+                                if (isLevelFinished(levelMatrix)) {
+                                    currentGame.setTotalScoreFor(currentGame.getTotalScoreFor() + currentGame.getStageScoreFor());
+                                    processLevelFinishedPopup(currentGame.getTotalScoreFor(), currentGame.getTotalScoreAgainst(),
+                                            currentGame.getStageScoreFor(), currentGame.getStageScoreAgainst());
+                                }
+                            }
+
+                            MatrixChoice firstItemClicked = currentGame.getFirstChoice() == null ? clickedItem : null;
+                            currentGame.setFirstChoice(firstItemClicked);
+
+                            if (currentGame.getFirstChoice() == null) {
+                                refreshImageViews();
+                            }
+                        }
+                    }
+                });
+                table.add(cell);
+            }
+            table.row();
         }
-        table.setFillParent(true);
-        addTitle(table);
-        MyButton startGameBtn = createStartGameBtn();
-        table.add(startGameBtn).height(ScreenDimensionsManager.getScreenHeightValue(13)).width(ScreenDimensionsManager.getScreenWidthValue(70)).padTop(verticalGeneralMarginDimen * 4).row();
-        table.add().padTop(verticalGeneralMarginDimen * 17);
+
         addActor(table);
     }
 
-    private void addTitle(Table table) {
-        Image titleRaysImage = GraphicUtils.getImage(Resource.title_rays);
-        new ActorAnimation(titleRaysImage, this).animateFastFadeInFadeOut();
-        float titleWidth = ScreenDimensionsManager.getScreenWidth();
-        float titleHeight = ScreenDimensionsManager.getNewHeightForNewWidth(titleWidth, titleRaysImage.getWidth(), titleRaysImage.getHeight());
-        titleRaysImage.setWidth(titleWidth);
-        titleRaysImage.setHeight(titleHeight);
-        titleRaysImage.setY(ScreenDimensionsManager.getScreenHeightValue(49));
-        addActor(titleRaysImage);
-        Stack titleLabel = createTitleLabel();
-        table.add(titleLabel)
-                .width(titleWidth)
-                .height(titleHeight)
-                .padBottom(MainDimen.vertical_general_margin.getDimen() * 1)
-                .row();
+    private void processScore(CurrentGame currentGame, MatrixChoice clickedItem) {
+        int scoreForToIncrement = 0;
+        int scoreAgainstToIncrement = 0;
+        String itemValue = null;
     }
 
-    private Stack createTitleLabel() {
-        String appName = Game.getInstance().getAppInfoService().getAppName();
-        MyWrappedLabel titleLabel = new MyWrappedLabel(new MyWrappedLabelConfigBuilder().setText(appName).build());
-        titleLabel.setFontScale(FontManager.calculateMultiplierStandardFontSize(appName.length() > 14 ? 1.5f : 2f));
-        titleLabel.setAlignment(Align.center);
-        return createTitleStack(titleLabel);
+    private void processLevelFinishedPopup(int totalScoreFor, int totalScoreAgainst,
+                                           int stageScoreFor, int stageScoreAgainst) {
     }
 
-    protected Stack createTitleStack(MyWrappedLabel titleLabel) {
-        Stack stack = new Stack();
-        Image image = GraphicUtils.getImage(Resource.title_background);
-        stack.addActor(image);
-        stack.addActor(titleLabel);
-        return stack;
+    public void refreshImageViews() {
+        for (TableCell tableCell : cells) {
+            tableCell.getCell().clearChildren();
+            if (tableCell.getMatrixElement().isFound() || tableCell.getMatrixElement().isShowed()) {
+                tableCell.getCell().add(getMatrixElementImage(tableCell.getMatrixElement()));
+            }
+        }
     }
 
-    private MyButton createStartGameBtn() {
-        return new BackButtonBuilder().createScreenBackButton(this);
+    private Image getMatrixElementImage(MatrixElement currentItem) {
+        return GraphicUtils.getImage(Resource.valueOf(currentItem.isShowed() ? "item" + currentItem.getItem() : "unknown"));
+    }
+
+    private boolean isLevelFinished(MatrixElement[][] matrix) {
+        boolean isGameOver = true;
+        for (int i = 0; i < matrix.length; i++) {
+            for (int j = 0; j < matrix[0].length; j++) {
+                if (!matrix[i][j].isFound()) {
+                    return false;
+                }
+            }
+        }
+        return isGameOver;
     }
 
     @Override
